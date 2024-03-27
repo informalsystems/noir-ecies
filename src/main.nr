@@ -1,8 +1,3 @@
-// this code is not cpp
-// game recognize game
-//
-// assert!("airdrop eligible")
-
 use dep::std::hash::poseidon2::Poseidon2;
 
 use dep::std::ec::tecurve::affine::{Point,Curve};
@@ -17,21 +12,20 @@ fn derive_pubkey(x: Field) -> (Point) {
     X
 }
 
-
 // encrypt msg of size 32 bytes using pubkey and randomness r
 fn encrypt(pubkey: Point, r: Field, msg: [Field; 32]) -> (Point, [Field; 32]) {
-    // gA = pubkey
+    // pubkey is gA
+    // with random r we can compute gR and the shared key gAR
     let gR  = derive_pubkey(r);
     let gAR = bjj.curve.mul(r, pubkey);
 
     let mut cipherText = [0;32];
 
     for i in 0..msg.len() {
-        let m = msg[i];
-
-        // hash(m || counter) 
+        // hash(gAR || counter) 
         let hashKey = Poseidon2::hash([gAR.x, i as Field], 2);
 
+        let m = msg[i];
         cipherText[i] = m + hashKey;
     }
 
@@ -39,18 +33,18 @@ fn encrypt(pubkey: Point, r: Field, msg: [Field; 32]) -> (Point, [Field; 32]) {
 }
 
 fn decrypt(privkey: Field, cipher: (Point, [Field;32])) -> [Field; 32] {
-
+    // privkey is A
+    // shared key is gAR
     let (gR, cipherText) = cipher;
     let gAR = bjj.curve.mul(privkey, gR); 
 
     let mut clearText = [0;32];
 
     for i in 0..cipherText.len() {
-        let m = cipherText[i];
-
-        // hash(m || counter) 
+        // hash(gAR || counter) 
         let hashKey = Poseidon2::hash([gAR.x, i as Field], 2);
 
+        let m = cipherText[i];
         clearText[i] = m - hashKey;
     }
 
